@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-  <title>Flip Clock with Screensaver - Optimized</title>
+  <title>Flip Clock with Screensaver - Optimized (Wake Lock Enabled)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css">
   <style>
     body {
@@ -116,13 +116,11 @@
       transform: scale(2) translateX(0.6rem);
       transition: transform 0.5s ease-in-out;
     }
-    
-body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
-  transform: scale(2) translateY(2rem) translateX(0.6rem);
-  transition: transform 0.5s ease-in-out;
-}
-
-    
+    /* حالت خاص: اگر صفحه کوچک (بدون کلاس wide) و در حالت screensaver و فول‌اسکرین باشد */
+    body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
+      transform: scale(2) translateY(2rem) translateX(0.6rem);
+      transition: transform 0.5s ease-in-out;
+    }
     :fullscreen,
     :-webkit-full-screen,
     :-moz-full-screen {
@@ -164,17 +162,55 @@ body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
   <!-- عنصر ساعت -->
   <div class="clock"></div>
   
+  <!-- کتابخانه‌های مورد نیاز -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js"></script>
   <script>
+    /* ===============================
+       کد مربوط به جلوگیری از خاموش شدن صفحه (Wake Lock)
+       =============================== */
+    let wakeLock = null;
+    async function requestWakeLock() {
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        console.log('Wake Lock فعال شد.');
+        wakeLock.addEventListener('release', () => {
+          console.log('Wake Lock آزاد شد.');
+        });
+      } catch (err) {
+        console.error(`خطا در درخواست Wake Lock: ${err.name}, ${err.message}`);
+      }
+    }
+    
+    // در صورتی که API Wake Lock پشتیبانی شود، با یک رویداد کاربری (مثلاً اولین کلیک) آن را درخواست می‌کنیم
+    if ('wakeLock' in navigator) {
+      document.addEventListener('click', async () => {
+        if (!wakeLock) {
+          await requestWakeLock();
+        }
+      }, { once: true });
+      
+      // هنگام تغییر وضعیت صفحه (مثلاً زمانی که به تب اصلی بازمی‌گردیم)، دوباره wake lock درخواست می‌شود
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && !wakeLock) {
+          requestWakeLock();
+        }
+      });
+    } else {
+      console.log('Wake Lock API توسط این مرورگر پشتیبانی نمی‌شود.');
+    }
+    
+    /* ===============================
+       کد مربوط به FlipClock، اسکرین‌سیور و حالت فول‌اسکرین
+       =============================== */
     $(document).ready(function() {
-      // مقداردهی اولیه ساعت به کمک کتابخانه FlipClock
+      // مقداردهی اولیه ساعت با استفاده از کتابخانه FlipClock
       var clock = $('.clock').FlipClock({
         clockFace: 'TwentyFourHourClock',
         autoStart: true
       });
-
-      // توابع pauseClock و resumeClock برای متوقف و از سرگیری به‌روزرسانی ساعت (بهینه‌سازی مصرف منابع در حالت اسکرین‌سیور)
+      
+      // توابع pauseClock و resumeClock برای متوقف و از سرگیری به‌روزرسانی ساعت در حالت اسکرین‌سیور
       function pauseClock() {
         if (clock && typeof clock.stop === 'function') {
           clock.stop();
@@ -197,22 +233,20 @@ body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
       // تنظیم وضعیت سوئیچ بر اساس مقدار خوانده شده
       const screensaverSwitch = document.getElementById('screensaverSwitch');
       screensaverSwitch.checked = screensaverEnabled;
-
+      
       // رویداد تغییر سوئیچ برای ذخیره وضعیت در localStorage و اعمال تغییرات مربوط به اسکرین‌سیور
       screensaverSwitch.addEventListener('change', function() {
         screensaverEnabled = this.checked;
         localStorage.setItem('screensaverEnabled', screensaverEnabled ? 'true' : 'false');
         if (!screensaverEnabled) {
-          // در صورتی که اسکرین‌سیور غیرفعال شود:
           clearTimeout(inactivityTimer);
           document.body.classList.remove('screensaver');
           resumeClock();
         } else {
-          // اگر دوباره فعال شد، تایمر ریست می‌شود
           resetInactivityTimer();
         }
       });
-
+      
       // منطق دکمه فول‌اسکرین
       const fullscreenBtn = document.getElementById('fullscreenBtn');
       fullscreenBtn.addEventListener('click', function() {
@@ -226,15 +260,15 @@ body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
           });
         }
       });
-
+      
       // رویداد تغییر حالت فول‌اسکرین
       document.addEventListener('fullscreenchange', function() {
         if (!document.fullscreenElement) {
           document.body.classList.remove("fullscreen");
         }
       });
-
-      // بررسی اندازه صفحه برای اعمال کلاس wide (نمایش بزرگتر ساعت در صفحات وسیع)
+      
+      // بررسی اندازه صفحه برای افزودن یا حذف کلاس wide (نمایش بزرگتر ساعت در صفحات وسیع)
       function checkWidth() {
         if (window.innerWidth >= 768) {
           document.body.classList.add('wide');
@@ -244,11 +278,11 @@ body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
       }
       window.addEventListener('resize', checkWidth);
       checkWidth();
-
+      
       // منطق اسکرین‌سیور به همراه بهینه‌سازی برای کاهش مصرف منابع
       let inactivityTimer;
       const screensaverDelay = 5000; // زمان تاخیر 5 ثانیه
-
+      
       function activateScreensaver() {
         if (screensaverEnabled) {
           document.body.classList.add('screensaver');
@@ -256,7 +290,7 @@ body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
           pauseClock();
         }
       }
-
+      
       function resetInactivityTimer() {
         // اگر قبلاً حالت اسکرین‌سیور فعال شده باشد، آن را غیر فعال کرده و به‌روزرسانی ساعت را از سر می‌گیریم
         if (document.body.classList.contains('screensaver')) {
@@ -268,18 +302,18 @@ body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
           inactivityTimer = setTimeout(activateScreensaver, screensaverDelay);
         }
       }
-
-      // استفاده از event listener با گزینه passive برای بهبود عملکرد (به جز keydown که نیاز به passive ندارد)
+      
+      // استفاده از event listener با گزینه passive برای بهبود عملکرد (به جز keydown که نیازی به passive ندارد)
       const events = ['mousemove', 'touchstart', 'click'];
       events.forEach(event => {
         document.addEventListener(event, resetInactivityTimer, { passive: true });
       });
       document.addEventListener('keydown', resetInactivityTimer);
-
+      
       // شروع اولیه تایمر عدم فعالیت
       resetInactivityTimer();
     });
-
+    
     // ثبت Service Worker (اختیاری)
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
