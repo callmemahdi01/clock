@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0 user-scalable=0">
-  <title>flip clock</title>
+  <title>Flip Clock with Screensaver</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css">
   <style>
     body {
@@ -71,6 +71,37 @@
     :-moz-full-screen {
       background-color: #000;
     }
+
+    /* استایل‌های جدید برای اسکرین‌سیور */
+    body.screensaver .flip-clock-wrapper ul:nth-last-child(-n+2) {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .5s ease-out;
+    }
+
+    body.screensaver .flip-clock-wrapper .flip-clock-divider:nth-of-type(2) .flip-clock-dot {
+      opacity: 0;
+      transition: opacity .5s ease-out;
+    }
+
+    /* برای زمانی که از اسکرین‌سیور خارج می‌شویم */
+    body:not(.screensaver) .flip-clock-wrapper ul:nth-last-child(-n+2) {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* برای نمایش دوباره نقاط */
+    body:not(.screensaver) .flip-clock-wrapper .flip-clock-divider:nth-of-type(2) .flip-clock-dot {
+      opacity: 1;
+    }
+    
+    body.screensaver.wide .flip-clock-wrapper {
+      transform: scale(1.5) translateX(5rem);
+      transition: transform 0.5s ease-out;
+    }
+
+
+    
   </style>
 </head>
 <body>
@@ -80,7 +111,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js"></script>
   <script>
     $(document).ready(function() {
+      // Initialize the clock
       var clock = $('.clock').FlipClock({ clockFace: 'TwentyFourHourClock' });
+
+      // Fullscreen button logic
       const fullscreenBtn = document.getElementById('fullscreenBtn');
       fullscreenBtn.addEventListener('click', function() {
         if (!document.fullscreenElement) {
@@ -93,11 +127,15 @@
           });
         }
       });
+
+      // Fullscreen change event
       document.addEventListener('fullscreenchange', function() {
         if (!document.fullscreenElement) {
           document.body.classList.remove("fullscreen");
         }
       });
+
+      // Responsive width check
       function checkWidth() {
         if (window.innerWidth >= 768) {
           document.body.classList.add('wide');
@@ -107,8 +145,33 @@
       }
       window.addEventListener('resize', checkWidth);
       checkWidth();
+
+      // Screensaver logic
+      let inactivityTimer;
+      const screensaverDelay = 5000; // 5 seconds
+
+      function resetInactivityTimer() {
+        clearTimeout(inactivityTimer);
+        document.body.classList.remove('screensaver');
+        inactivityTimer = setTimeout(activateScreensaver, screensaverDelay);
+      }
+
+      function activateScreensaver() {
+        document.body.classList.add('screensaver');
+      }
+
+      // User interaction events
+      const events = ['mousemove', 'touchstart', 'click', 'keydown'];
+      events.forEach(event => {
+        document.addEventListener(event, resetInactivityTimer);
+      });
+
+      // Start the initial timer
+      resetInactivityTimer();
     });
-        if ("serviceWorker" in navigator) {
+
+    // Service Worker registration (optional)
+    if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker
           .register("/clock/sw.js")
@@ -119,3 +182,4 @@
   </script>
 </body>
 </html>
+
