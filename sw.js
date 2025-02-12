@@ -10,7 +10,10 @@ const urlsToCache = [
 
 async function cacheFirst(request) {
   const cachedResponse = await caches.match(request);
-  return cachedResponse || networkFirst(request);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  return networkFirst(request);
 }
 
 async function networkFirst(request) {
@@ -22,7 +25,7 @@ async function networkFirst(request) {
     }
     return response;
   } catch (error) {
-    return caches.match(request);
+    return caches.match(request); // استفاده از کش در صورت عدم دسترسی به اینترنت
   }
 }
 
@@ -30,15 +33,15 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
-      .then(() => self.skipWaiting()) // بلافاصله فعال شود
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('fetch', event => {
   if (event.request.url.includes('index.html')) {
-    event.respondWith(networkFirst(event.request));
+    event.respondWith(networkFirst(event.request)); // درخواست برای صفحه اصلی همیشه از سرور انجام شود
   } else {
-    event.respondWith(cacheFirst(event.request));
+    event.respondWith(cacheFirst(event.request)); // درخواست‌های استاتیک از کش استفاده کنند
   }
 });
 
@@ -53,6 +56,6 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    }).then(() => self.clients.claim()) // اطمینان از اعمال نسخه‌ی جدید
+    }).then(() => self.clients.claim())
   );
 });
