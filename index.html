@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ساعت فلیپ</title>
+  <link rel="manifest" href="/clock/manifest.json">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css">
   <style>
     body {
@@ -51,24 +52,20 @@
       direction: ltr;
     }
 
-    /* استایل اولیه برای ساعت */
     .flip-clock-wrapper {
       width: 10rem;
       transform: scale(1);
       transition: transform 0.3s ease-in-out;
     }
 
-    /* وقتی در حالت تمام صفحه هستیم */
     .fullscreen .flip-clock-wrapper {
       transform: scale(2) translateX(0.6rem);
     }
 
-    /* حذف جداکننده‌های دو نقطه */
     .flip-clock-divider {
       display: none;
     }
 
-    /* تغییرات برای حالت تمام صفحه */
     :fullscreen {
       background-color: #000;
     }
@@ -79,17 +76,16 @@
       background-color: #000;
     }
 
-    /* وقتی دستگاه عریض یا کشش افقی رخ داد (عرض صفحه ≥ 768px) عرض ساعت برداشته می‌شود */
     @media (min-width: 768px) {
       .flip-clock-wrapper {
-        width: auto; /* یا می‌توانید از unset یا initial استفاده کنید */
+        width: auto;
       }
       .flip-clock-divider {
-      display: block;
-    }
-        .fullscreen .flip-clock-wrapper {
-      transform: scale(1.5) translateX(0);
-    }
+        display: block;
+      }
+      .fullscreen .flip-clock-wrapper {
+        transform: scale(1.5) translateX(0);
+      }
     }
   </style>
 </head>
@@ -125,15 +121,15 @@
         }
       });
     });
-    if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/clock/sw.js")
-      .then(() => console.log("Service Worker ثبت شد"))
-      .catch((err) => console.error("خطا در ثبت Service Worker:", err));
-  });
-}
 
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/clock/sw.js")
+          .then(() => console.log("Service Worker ثبت شد"))
+          .catch((err) => console.error("خطا در ثبت Service Worker:", err));
+      });
+    }
   </script>
 </body>
 </html>
