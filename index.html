@@ -17,7 +17,6 @@
       background-color: #000;
       font-family: Arial, sans-serif;
     }
-
     #fullscreenBtn {
       position: fixed;
       top: 15px;
@@ -35,78 +34,54 @@
       transition: background-color 0.3s, opacity 0.3s;
       opacity: 0.5;
     }
-
     #fullscreenBtn:hover {
       background-color: rgba(255, 255, 255, 0.4);
       opacity: 1;
     }
-
     #fullscreenBtn::before {
       content: "⛶";
       font-size: 18px;
       color: white;
     }
-
     .clock {
       direction: ltr;
     }
-
-    /* استایل اولیه برای ساعت */
     .flip-clock-wrapper {
       width: 10rem;
-      transform: scale(1);
+      transform: scale(1) translateZ(0);
       transition: transform 0.5s ease-in-out;
+      will-change: transform, opacity;
     }
-
-    /* استایل تغییر یافته برای حالت عریض (پس از چرخش یا افزایش عرض) */
     body.wide .flip-clock-wrapper {
       transform: scale(1.5) translateX(0);
+      width: auto; 
     }
-
-    /* حذف جداکننده‌های دو نقطه */
     .flip-clock-divider {
       display: none;
     }
-
-    /* استایل‌های مربوط به حالت تمام صفحه (اختیاری) */
-    .fullscreen .flip-clock-wrapper {
-      transform: scale(2) translateX(0.6rem);
-      transition: transform 1s ease-in-out;
-    }
-
-    :fullscreen {
-      background-color: #000;
-    }
-    :-webkit-full-screen {
-      background-color: #000;
-    }
-    :-moz-full-screen {
-      background-color: #000;
-    }
-        @media (min-width: 768px) {
-      .flip-clock-wrapper {
-        width: auto; /* یا می‌توانید از unset یا initial استفاده کنید */
-      }
-          .flip-clock-divider {
+    body.wide .flip-clock-divider {
       display: block;
     }
+    .fullscreen .flip-clock-wrapper {
+      transform: scale(2) translateX(0.6rem);
+      transition: transform 0.5s ease-in-out;
+    }
+    :fullscreen,
+    :-webkit-full-screen,
+    :-moz-full-screen {
+      background-color: #000;
     }
   </style>
 </head>
 <body>
   <button id="fullscreenBtn"></button>
   <div class="clock"></div>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js"></script>
   <script>
     $(document).ready(function() {
-      var clock = $('.clock').FlipClock({
-        clockFace: 'TwentyFourHourClock'
-      });
-
+      var clock = $('.clock').FlipClock({ clockFace: 'TwentyFourHourClock' });
       const fullscreenBtn = document.getElementById('fullscreenBtn');
-
       fullscreenBtn.addEventListener('click', function() {
         if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen().then(() => {
@@ -118,15 +93,22 @@
           });
         }
       });
-
       document.addEventListener('fullscreenchange', function() {
         if (!document.fullscreenElement) {
           document.body.classList.remove("fullscreen");
         }
       });
+      function checkWidth() {
+        if (window.innerWidth >= 768) {
+          document.body.classList.add('wide');
+        } else {
+          document.body.classList.remove('wide');
+        }
+      }
+      window.addEventListener('resize', checkWidth);
+      checkWidth();
     });
-
-    if ("serviceWorker" in navigator) {
+        if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker
           .register("/clock/sw.js")
