@@ -1,6 +1,6 @@
 const CACHE_NAME = "flip-clock-cache-v1";
 const urlsToCache = [
-  "/",
+  "/clock/",
   "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css",
