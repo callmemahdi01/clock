@@ -1,69 +1,59 @@
-const CACHE_NAME = "flip-clock-cache-v1";
+const CACHE_NAME = 'gpa-calculator-cache-v1.3';
 const urlsToCache = [
-  "/clock/",
-  "/clock/index.html",
-  "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css"
-];
+  '/clock/',
+  '/clock/index.html',
+  '/clock/manifest.json',
+  '/clock/icon192×192.png',
+  '/clock/icon512×512.png',
+  '/clock/sw.js'
+].map(url => new Request(url, { credentials: 'same-origin' }));
 
-// کش کردن منابع هنگام نصب سرویس ورکر
-self.addEventListener("install", (event) => {
+// استراتژی cacheFirst: ابتدا از کش می‌خوانیم، در صورت عدم وجود، به شبکه مراجعه می‌کنیم
+async function cacheFirst(request) {
+  const cachedResponse = await caches.match(request);
+  return cachedResponse || networkFirst(request);
+}
+
+// استراتژی networkFirst: ابتدا تلاش می‌کنیم از شبکه بخوانیم، اگر موفق بود، نتیجه در کش ذخیره شده و بازگردانده می‌شود؛ در غیر این صورت، از کش استفاده می‌کنیم
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    // بررسی می‌کنیم که پاسخ معتبر است
+    if (response && response.status === 200 && response.type === 'basic') {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    return caches.match(request);
+  }
+}
+
+// رویداد نصب (install): در زمان نصب، فایل‌های مورد نظر را کش می‌کنیم
+self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      for (const url of urlsToCache) {
-        try {
-          await cache.add(url);
-        } catch (err) {
-          console.error(`خطا در کش کردن ${url}:`, err);
-        }
-      }
-    })
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
   );
 });
 
-// حذف کش‌های قدیمی هنگام فعال شدن سرویس ورکر جدید
-self.addEventListener("activate", (event) => {
+// رویداد fetch: درخواست‌ها را مدیریت می‌کنیم و ابتدا استراتژی cacheFirst را اعمال می‌کنیم
+self.addEventListener('fetch', event => {
+  event.respondWith(cacheFirst(event.request));
+});
+
+// رویداد activate: در زمان فعال شدن سرویس ورکر، کش‌های قدیمی پاک می‌شوند
+self.addEventListener('activate', event => {
+  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log("حذف کش قدیمی:", cache);
-            return caches.delete(cache);
+        cacheNames.map(cacheName => {
+          if (!cacheWhitelist.includes(cacheName)) {
+            return caches.delete(cacheName);
           }
         })
       );
     })
-  );
-});
-
-// مدیریت درخواست‌ها
-self.addEventListener("fetch", (event) => {
-  const requestURL = new URL(event.request.url);
-
-  // از پردازش درخواست‌هایی که از chrome-extension:// یا فایل‌های غیر HTTP هستند، صرف نظر کن
-  if (!requestURL.protocol.startsWith("http")) {
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // فقط درخواست‌های GET را در کش ذخیره کن
-        if (event.request.method !== "GET") {
-          return response;
-        }
-
-        return caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, response.clone());
-          return response;
-        });
-      })
-      .catch(() => {
-        return caches.match(event.request).then((cachedResponse) => {
-          return cachedResponse || caches.match("/clock/index.html");
-        });
-      })
   );
 });
