@@ -4,8 +4,7 @@ const urlsToCache = [
 "/clock/index.html",  // مسیر صفحه اصلی
   "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css",
-  "/styles.css"
+  "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css"
 ];
 
 // هنگام نصب، منابع را کش می‌کنیم
