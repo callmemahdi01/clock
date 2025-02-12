@@ -1,5 +1,5 @@
 {
-  "name": "ساعت فلیپ",
+  "name": "Flip Clock",
   "short_name": "FlipClock",
   "start_url": "/clock/index.html",
   "scope": "/clock/",
