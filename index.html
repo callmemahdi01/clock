@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
-  <title>Flip Clock with Screensaver</title>
+  <title>Flip Clock with Screensaver - Optimized</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css">
   <style>
     body {
@@ -44,7 +44,6 @@
       font-size: 18px;
       color: white;
     }
-
     /* استایل سوئیچ کنترل اسکرین‌سیور */
     #screensaverSwitchContainer {
       position: fixed;
@@ -93,7 +92,6 @@
       transform: translateX(26px);
       box-shadow: 0 0 10px red;
     }
-
     /* استایل‌های مربوط به ساعت */
     .clock {
       direction: ltr;
@@ -118,12 +116,18 @@
       transform: scale(2) translateX(0.6rem);
       transition: transform 0.5s ease-in-out;
     }
+    
+body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
+  transform: scale(2) translateY(2rem) translateX(0.6rem);
+  transition: transform 0.5s ease-in-out;
+}
+
+    
     :fullscreen,
     :-webkit-full-screen,
     :-moz-full-screen {
       background-color: #000;
     }
-
     /* استایل‌های مربوط به اسکرین‌سیور */
     body.screensaver .flip-clock-wrapper ul:nth-last-child(-n+2) {
       opacity: 0;
@@ -164,6 +168,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js"></script>
   <script>
     $(document).ready(function() {
+      // مقداردهی اولیه ساعت به کمک کتابخانه FlipClock
+      var clock = $('.clock').FlipClock({
+        clockFace: 'TwentyFourHourClock',
+        autoStart: true
+      });
+
+      // توابع pauseClock و resumeClock برای متوقف و از سرگیری به‌روزرسانی ساعت (بهینه‌سازی مصرف منابع در حالت اسکرین‌سیور)
+      function pauseClock() {
+        if (clock && typeof clock.stop === 'function') {
+          clock.stop();
+        }
+      }
+      function resumeClock() {
+        if (clock && typeof clock.start === 'function') {
+          clock.start();
+        }
+      }
+      
       // خواندن وضعیت اسکرین‌سیور از localStorage؛ در صورت عدم وجود، پیش‌فرض true (فعال) است.
       let screensaverEnabled = localStorage.getItem('screensaverEnabled');
       if (screensaverEnabled === null) {
@@ -176,22 +198,20 @@
       const screensaverSwitch = document.getElementById('screensaverSwitch');
       screensaverSwitch.checked = screensaverEnabled;
 
-      // افزودن رویداد تغییر برای سوئیچ به منظور ذخیره وضعیت در localStorage
+      // رویداد تغییر سوئیچ برای ذخیره وضعیت در localStorage و اعمال تغییرات مربوط به اسکرین‌سیور
       screensaverSwitch.addEventListener('change', function() {
         screensaverEnabled = this.checked;
         localStorage.setItem('screensaverEnabled', screensaverEnabled ? 'true' : 'false');
         if (!screensaverEnabled) {
-          // اگر اسکرین‌سیور غیرفعال شود، تایمر متوقف شده و کلاس مربوطه حذف می‌شود
+          // در صورتی که اسکرین‌سیور غیرفعال شود:
           clearTimeout(inactivityTimer);
           document.body.classList.remove('screensaver');
+          resumeClock();
         } else {
-          // در صورت فعال‌سازی دوباره، تایمر مجدداً ریست می‌شود
+          // اگر دوباره فعال شد، تایمر ریست می‌شود
           resetInactivityTimer();
         }
       });
-
-      // مقداردهی اولیه ساعت
-      var clock = $('.clock').FlipClock({ clockFace: 'TwentyFourHourClock' });
 
       // منطق دکمه فول‌اسکرین
       const fullscreenBtn = document.getElementById('fullscreenBtn');
@@ -225,32 +245,38 @@
       window.addEventListener('resize', checkWidth);
       checkWidth();
 
-      // منطق اسکرین‌سیور
+      // منطق اسکرین‌سیور به همراه بهینه‌سازی برای کاهش مصرف منابع
       let inactivityTimer;
       const screensaverDelay = 5000; // زمان تاخیر 5 ثانیه
 
+      function activateScreensaver() {
+        if (screensaverEnabled) {
+          document.body.classList.add('screensaver');
+          // متوقف کردن به‌روزرسانی ساعت در حالت اسکرین‌سیور
+          pauseClock();
+        }
+      }
+
       function resetInactivityTimer() {
+        // اگر قبلاً حالت اسکرین‌سیور فعال شده باشد، آن را غیر فعال کرده و به‌روزرسانی ساعت را از سر می‌گیریم
+        if (document.body.classList.contains('screensaver')) {
+          document.body.classList.remove('screensaver');
+          resumeClock();
+        }
         clearTimeout(inactivityTimer);
-        document.body.classList.remove('screensaver');
-        // فقط در صورتی که اسکرین‌سیور فعال باشد، تایمر تنظیم می‌شود
         if (screensaverEnabled) {
           inactivityTimer = setTimeout(activateScreensaver, screensaverDelay);
         }
       }
 
-      function activateScreensaver() {
-        if (screensaverEnabled) {
-          document.body.classList.add('screensaver');
-        }
-      }
-
-      // رویدادهای تعامل کاربر (حرکت ماوس، لمس، کلیک، فشردن کلید) برای ریست تایمر
-      const events = ['mousemove', 'touchstart', 'click', 'keydown'];
+      // استفاده از event listener با گزینه passive برای بهبود عملکرد (به جز keydown که نیاز به passive ندارد)
+      const events = ['mousemove', 'touchstart', 'click'];
       events.forEach(event => {
-        document.addEventListener(event, resetInactivityTimer);
+        document.addEventListener(event, resetInactivityTimer, { passive: true });
       });
+      document.addEventListener('keydown', resetInactivityTimer);
 
-      // شروع اولیه تایمر
+      // شروع اولیه تایمر عدم فعالیت
       resetInactivityTimer();
     });
 
