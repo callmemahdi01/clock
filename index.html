@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0 user-scalable=0">
-  <title>ساعت فلیپ</title>
-  <link rel="manifest" href="/clock/manifest.json">
+  <title>flip clock</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css">
   <style>
     body {
@@ -52,18 +51,27 @@
       direction: ltr;
     }
 
+    /* استایل اولیه برای ساعت */
     .flip-clock-wrapper {
       width: 10rem;
       transform: scale(1);
-      transition: transform 0.3s ease-in-out;
+      transition: transform 0.5s ease-in-out;
     }
 
-    .fullscreen .flip-clock-wrapper {
-      transform: scale(2) translateX(0.6rem);
+    /* استایل تغییر یافته برای حالت عریض (پس از چرخش یا افزایش عرض) */
+    body.wide .flip-clock-wrapper {
+      transform: scale(1.5) translateX(0);
     }
 
+    /* حذف جداکننده‌های دو نقطه */
     .flip-clock-divider {
       display: none;
+    }
+
+    /* استایل‌های مربوط به حالت تمام صفحه (اختیاری) */
+    .fullscreen .flip-clock-wrapper {
+      transform: scale(2) translateX(0.6rem);
+      transition: transform 1s ease-in-out;
     }
 
     :fullscreen {
@@ -75,17 +83,13 @@
     :-moz-full-screen {
       background-color: #000;
     }
-
-    @media (min-width: 768px) {
+        @media (min-width: 768px) {
       .flip-clock-wrapper {
-        width: auto;
+        width: auto; /* یا می‌توانید از unset یا initial استفاده کنید */
       }
-      .flip-clock-divider {
-        display: block;
-      }
-      .fullscreen .flip-clock-wrapper {
-        transform: scale(1.5) translateX(0);
-      }
+          .flip-clock-divider {
+      display: block;
+    }
     }
   </style>
 </head>
