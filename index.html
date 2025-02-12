@@ -128,7 +128,7 @@
     if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/clock/sw.js")
       .then(() => console.log("Service Worker ثبت شد"))
       .catch((err) => console.error("خطا در ثبت Service Worker:", err));
   });
