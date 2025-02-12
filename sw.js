@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gpa-calculator-cache-v1.3';
+const CACHE_NAME = 'clock-cache-v1.3';
 const urlsToCache = [
   '/clock/',
   '/clock/index.html',
