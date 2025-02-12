@@ -1,13 +1,13 @@
 const CACHE_NAME = "flip-clock-cache-v1";
 const urlsToCache = [
   "/clock/",
-"/clock/index.html",  // مسیر صفحه اصلی
+  "/clock/index.html",
   "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css"
 ];
 
-// هنگام نصب، منابع را کش می‌کنیم
+// کش کردن منابع هنگام نصب سرویس ورکر
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
@@ -22,7 +22,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// حذف کش‌های قدیمی هنگام فعال‌سازی سرویس ورکر جدید
+// حذف کش‌های قدیمی هنگام فعال شدن سرویس ورکر جدید
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -38,20 +38,32 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// مدیریت درخواست‌ها: اولویت با اینترنت، در صورت مشکل از کش
+// مدیریت درخواست‌ها
 self.addEventListener("fetch", (event) => {
+  const requestURL = new URL(event.request.url);
+
+  // از پردازش درخواست‌هایی که از chrome-extension:// یا فایل‌های غیر HTTP هستند، صرف نظر کن
+  if (!requestURL.protocol.startsWith("http")) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // اگر درخواست موفق بود، نتیجه را در کش ذخیره می‌کنیم
+        // فقط درخواست‌های GET را در کش ذخیره کن
+        if (event.request.method !== "GET") {
+          return response;
+        }
+
         return caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, response.clone());
           return response;
         });
       })
       .catch(() => {
-        // اگر اینترنت قطع بود، از کش استفاده می‌کنیم
-        return caches.match(event.request);
+        return caches.match(event.request).then((cachedResponse) => {
+          return cachedResponse || caches.match("/clock/index.html");
+        });
       })
   );
 });
