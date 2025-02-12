@@ -1,28 +1,35 @@
 const CACHE_NAME = "flip-clock-cache-v1";
 const urlsToCache = [
-  "/clock/",
+  "/clock/",  // مسیر صفحه اصلی
   "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css",
   "/styles.css"
 ];
 
-// نصب Service Worker و کش کردن منابع
+// هنگام نصب، منابع را کش می‌کنیم
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      for (const url of urlsToCache) {
+        try {
+          await cache.add(url);
+        } catch (err) {
+          console.error(`خطا در کش کردن ${url}:`, err);
+        }
+      }
     })
   );
 });
 
-// فعال‌سازی و پاک‌سازی کش‌های قدیمی
+// حذف کش‌های قدیمی هنگام فعال‌سازی سرویس ورکر جدید
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
+            console.log("حذف کش قدیمی:", cache);
             return caches.delete(cache);
           }
         })
@@ -31,20 +38,20 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// هندل کردن درخواست‌ها
+// مدیریت درخواست‌ها: اولویت با اینترنت، در صورت مشکل از کش
 self.addEventListener("fetch", (event) => {
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      // اگر درخواست در کش موجود است، آن را برمی‌گرداند
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      
-      // در غیر این صورت، تلاش می‌کند از سرور درخواست کند
-      return fetch(event.request).catch(() => {
-        // در صورت عدم دسترسی به اینترنت، صفحه کش‌شده آخر را نمایش می‌دهد
+    fetch(event.request)
+      .then((response) => {
+        // اگر درخواست موفق بود، نتیجه را در کش ذخیره می‌کنیم
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, response.clone());
+          return response;
+        });
+      })
+      .catch(() => {
+        // اگر اینترنت قطع بود، از کش استفاده می‌کنیم
         return caches.match(event.request);
-      });
-    })
+      })
   );
 });
