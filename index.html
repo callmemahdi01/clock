@@ -7,18 +7,15 @@
   <meta name="description" content="Flip Clock with Screensaver - Optimized (Wake Lock Enabled)" />
   <title>Flip Clock</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.css">
-<link rel="icon" type="image/png" sizes="192x192" href="/clock/icon192x192.png">
-<link rel="apple-touch-icon" sizes="192x192" href="/clock/icon192x192.png">
-<link rel="manifest" href="/clock/manifest.json">
-
+  <link rel="icon" type="image/png" sizes="192x192" href="/clock/icon192x192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/clock/icon192x192.png">
+  <link rel="manifest" href="/clock/manifest.json">
   <style>
-body {
-    -webkit-user-select: none; /* Chrome, Safari, Opera */
-    -moz-user-select: none;    /* Firefox */
-    -ms-user-select: none;     /* IE 10+ */
-    user-select: none;         /* Standard syntax */
-}
     body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
       margin: 0;
       padding: 0;
       display: flex;
@@ -28,6 +25,7 @@ body {
       min-height: 100vh;
       background-color: #000;
       font-family: Arial, sans-serif;
+      overflow: hidden;
     }
     #fullscreenBtn {
       position: fixed;
@@ -50,7 +48,6 @@ body {
     #fullscreenBtn:hover {
       opacity: 1;
       box-shadow: 0 0 2px red;
-      
     }
     #fullscreenBtn::before {
       content: "⛶";
@@ -63,7 +60,6 @@ body {
       right: 60px;
       z-index: 1000;
     }
-    
     .switch {
       position: relative;
       display: inline-block;
@@ -106,38 +102,34 @@ body {
       transform: translateX(26px);
       box-shadow: 0 0 5px red;
     }
-
     .flip-clock-wrapper {
       width: 10rem;
       transform: scale(1) translateZ(0) translateX(.55rem);
       transition: transform 0.5s ease-in-out;
       will-change: transform, opacity;
     }
-    body.wide .flip-clock-wrapper {
-      transform: scale(1.5) translateX(0);
-      width: auto; 
+    @media (min-width: 768px) {
+      .flip-clock-wrapper {
+        transform: scale(1.5) translateX(0);
+        width: auto; 
+      }
+      .flip-clock-divider {
+        display: block !important;
+      }
+    }
+    @media (min-width: 1200px) {
+      .flip-clock-wrapper {
+        transform: scale(1.5) translateX(0.65rem);
+      }
+    }
+    @media (max-width: 767px) and (min-height: 700px) {
+      .flip-clock-wrapper {
+        transform: scale(1.5) translateZ(0) translateX(.55rem);
+      }
     }
     .flip-clock-divider {
       display: none;
     }
-    body.wide .flip-clock-divider {
-      display: block;
-    }
-    .fullscreen .flip-clock-wrapper {
-      transform: scale(2) translateX(0.65rem);
-      transition: transform 0.5s ease-in-out;
-    }
-    /* حالت خاص: اگر صفحه کوچک (بدون کلاس wide) و در حالت screensaver و فول‌اسکرین باشد */
-    body:not(.wide).screensaver.fullscreen .flip-clock-wrapper {
-      transform: scale(2) translateY(2rem) translateX(0.65rem);
-      transition: transform 0.5s ease-in-out;
-    }
-    :fullscreen,
-    :-webkit-full-screen,
-    :-moz-full-screen {
-      background-color: #000;
-    }
-    /* استایل‌های مربوط به اسکرین‌سیور */
     body.screensaver .flip-clock-wrapper ul:nth-last-child(-n+2) {
       opacity: 0;
       pointer-events: none;
@@ -158,112 +150,111 @@ body {
       transform: scale(1.5) translateX(5rem);
       transition: transform 0.5s ease-out;
     }
+    body.screensaver:not(.wide) .flip-clock-wrapper {
+      transform: scale(1.5) translateY(2rem) translateX(0.65rem);
+      transition: transform 0.5s ease-out;
+    }
+    :fullscreen,
+    :-webkit-full-screen,
+    :-moz-full-screen {
+      background-color: #000;
+    }
   </style>
 </head>
 <body oncontextmenu="return false;">
-  <!-- دکمه فول‌اسکرین -->
   <button id="fullscreenBtn"></button>
-  <!-- سوئیچ کنترل اسکرین‌سیور -->
   <div id="screensaverSwitchContainer">
     <label class="switch">
       <input type="checkbox" id="screensaverSwitch">
       <span class="slider"></span>
     </label>
   </div>
-  <!-- عنصر ساعت -->
   <div class="clock"></div>
-  
-  <!-- کتابخانه‌های مورد نیاز -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flipclock/0.7.8/flipclock.min.js"></script>
   <script>
-    /* ===============================
-       کد مربوط به جلوگیری از خاموش شدن صفحه (Wake Lock)
-       =============================== */
     let wakeLock = null;
+    let clock = null;
+    let inactivityTimer = null;
+    let screensaverEnabled = (localStorage.getItem('screensaverEnabled') !== 'false');
+    const screensaverDelay = 5000;
+    let lastUpdateTime = 0;
+    const updateInterval = 1000;
+
     async function requestWakeLock() {
       try {
-        wakeLock = await navigator.wakeLock.request('screen');
-        console.log('Wake Lock فعال شد.');
-        wakeLock.addEventListener('release', () => {
-          console.log('Wake Lock آزاد شد.');
-        });
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            wakeLock = null;
+          });
+        }
       } catch (err) {
-        console.error(`خطا در درخواست Wake Lock: ${err.name}, ${err.message}`);
+        console.error('Wake Lock error:', err);
       }
     }
-    
-    // در صورتی که API Wake Lock پشتیبانی شود، با یک رویداد کاربری (مثلاً اولین کلیک) آن را درخواست می‌کنیم
-    if ('wakeLock' in navigator) {
-      document.addEventListener('click', async () => {
-        if (!wakeLock) {
-          await requestWakeLock();
-        }
-      }, { once: true });
-      
-      // هنگام تغییر وضعیت صفحه (مثلاً زمانی که به تب اصلی بازمی‌گردیم)، دوباره wake lock درخواست می‌شود
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && !wakeLock) {
-          requestWakeLock();
-        }
-      });
-    } else {
-      console.log('Wake Lock API توسط این مرورگر پشتیبانی نمی‌شود.');
-    }
-    
-    /* ===============================
-       کد مربوط به FlipClock، اسکرین‌سیور و حالت فول‌اسکرین
-       =============================== */
-    $(document).ready(function() {
-      // مقداردهی اولیه ساعت با استفاده از کتابخانه FlipClock
-      var clock = $('.clock').FlipClock({
+
+    function initClock() {
+      if (clock) return;
+      clock = $('.clock').FlipClock(new Date(), {
         clockFace: 'TwentyFourHourClock',
         autoStart: true
       });
-      
-      // توابع pauseClock و resumeClock برای متوقف و از سرگیری به‌روزرسانی ساعت در حالت اسکرین‌سیور
-      function pauseClock() {
-        if (clock && typeof clock.stop === 'function') {
-          clock.stop();
-        }
+    }
+
+    function updateClock() {
+      const now = Date.now();
+      if (now - lastUpdateTime >= updateInterval) {
+        clock.setTime(new Date());
+        lastUpdateTime = now;
       }
-      function resumeClock() {
-        if (clock && typeof clock.start === 'function') {
-          clock.start();
-        }
-      }
-      
-      // خواندن وضعیت اسکرین‌سیور از localStorage؛ در صورت عدم وجود، پیش‌فرض true (فعال) است.
-      let screensaverEnabled = localStorage.getItem('screensaverEnabled');
-      if (screensaverEnabled === null) {
-        screensaverEnabled = true;
-        localStorage.setItem('screensaverEnabled', 'true');
+    }
+
+    function checkWidth() {
+      if (window.innerWidth >= 768) {
+        document.body.classList.add('wide');
       } else {
-        screensaverEnabled = (screensaverEnabled === 'true');
+        document.body.classList.remove('wide');
       }
-      // تنظیم وضعیت سوئیچ بر اساس مقدار خوانده شده
+    }
+
+    function activateScreensaver() {
+      if (screensaverEnabled) {
+        document.body.classList.add('screensaver');
+      }
+    }
+
+    function resetInactivityTimer() {
+      if (document.body.classList.contains('screensaver')) {
+        document.body.classList.remove('screensaver');
+      }
+      clearTimeout(inactivityTimer);
+      if (screensaverEnabled) {
+        inactivityTimer = setTimeout(activateScreensaver, screensaverDelay);
+      }
+    }
+
+    function setupEventListeners() {
       const screensaverSwitch = document.getElementById('screensaverSwitch');
       screensaverSwitch.checked = screensaverEnabled;
-      
-      // رویداد تغییر سوئیچ برای ذخیره وضعیت در localStorage و اعمال تغییرات مربوط به اسکرین‌سیور
       screensaverSwitch.addEventListener('change', function() {
         screensaverEnabled = this.checked;
         localStorage.setItem('screensaverEnabled', screensaverEnabled ? 'true' : 'false');
         if (!screensaverEnabled) {
           clearTimeout(inactivityTimer);
           document.body.classList.remove('screensaver');
-          resumeClock();
         } else {
           resetInactivityTimer();
         }
       });
-      
-      // منطق دکمه فول‌اسکرین
+
       const fullscreenBtn = document.getElementById('fullscreenBtn');
       fullscreenBtn.addEventListener('click', function() {
         if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen().then(() => {
             document.body.classList.add("fullscreen");
+          }).catch(err => {
+            console.error('Fullscreen error:', err);
           });
         } else {
           document.exitFullscreen().then(() => {
@@ -271,70 +262,55 @@ body {
           });
         }
       });
-      
-      // رویداد تغییر حالت فول‌اسکرین
+
       document.addEventListener('fullscreenchange', function() {
         if (!document.fullscreenElement) {
           document.body.classList.remove("fullscreen");
         }
       });
-      
-      // بررسی اندازه صفحه برای افزودن یا حذف کلاس wide (نمایش بزرگتر ساعت در صفحات وسیع)
-      function checkWidth() {
-        if (window.innerWidth >= 768) {
-          document.body.classList.add('wide');
-        } else {
-          document.body.classList.remove('wide');
-        }
-      }
-      window.addEventListener('resize', checkWidth);
-      checkWidth();
-      
-      // منطق اسکرین‌سیور به همراه بهینه‌سازی برای کاهش مصرف منابع
-      let inactivityTimer;
-      const screensaverDelay = 5000; // زمان تاخیر 5 ثانیه
-      
-      function activateScreensaver() {
-        if (screensaverEnabled) {
-          document.body.classList.add('screensaver');
-          // متوقف کردن به‌روزرسانی ساعت در حالت اسکرین‌سیور
-          pauseClock();
-        }
-      }
-      
-      function resetInactivityTimer() {
-        // اگر قبلاً حالت اسکرین‌سیور فعال شده باشد، آن را غیر فعال کرده و به‌روزرسانی ساعت را از سر می‌گیریم
-        if (document.body.classList.contains('screensaver')) {
-          document.body.classList.remove('screensaver');
-          resumeClock();
-        }
-        clearTimeout(inactivityTimer);
-        if (screensaverEnabled) {
-          inactivityTimer = setTimeout(activateScreensaver, screensaverDelay);
-        }
-      }
-      
-      // استفاده از event listener با گزینه passive برای بهبود عملکرد (به جز keydown که نیازی به passive ندارد)
+
       const events = ['mousemove', 'touchstart', 'click'];
       events.forEach(event => {
         document.addEventListener(event, resetInactivityTimer, { passive: true });
       });
       document.addEventListener('keydown', resetInactivityTimer);
-      
-      // شروع اولیه تایمر عدم فعالیت
-      resetInactivityTimer();
-    });
-    
-    // ثبت Service Worker (اختیاری)
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("/clock/sw.js")
-          .then(() => console.log("Service Worker ثبت شد"))
-          .catch((err) => console.error("خطا در ثبت Service Worker:", err));
-      });
+
+      window.addEventListener('resize', checkWidth);
     }
-document.addEventListener('contextmenu', event => event.preventDefault());
+
+    function init() {
+      initClock();
+      setupEventListeners();
+      checkWidth();
+      resetInactivityTimer();
+
+      if ('wakeLock' in navigator) {
+        document.addEventListener('click', async () => {
+          if (!wakeLock) {
+            await requestWakeLock();
+          }
+        }, { once: true });
+        document.addEventListener('visibilitychange', async () => {
+          if (document.visibilityState === 'visible' && !wakeLock) {
+            await requestWakeLock();
+          }
+        });
+      }
+
+      setInterval(updateClock, 500);
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/clock/sw.js")
+            .catch((err) => console.error("Service Worker error:", err));
+        });
+      }
+
+      document.addEventListener('contextmenu', event => event.preventDefault());
+    }
+
+    $(document).ready(init);
   </script>
 </body>
 </html>
