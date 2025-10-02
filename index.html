@@ -26,6 +26,7 @@
       background-color: #000;
       font-family: Arial, sans-serif;
       overflow: hidden;
+      contain: layout style paint;
     }
     #fullscreenBtn {
       position: fixed;
@@ -46,6 +47,7 @@
       box-shadow: 0 0 2px white;
       pointer-events: none;
       opacity: 0;
+      transform: translateZ(0);
     }
     #fullscreenBtn:hover {
       opacity: 1;
@@ -64,6 +66,7 @@
       pointer-events: none;
       opacity: 0;
       transition: opacity 0.7s;
+      transform: translateZ(0);
     }
     .switch {
       position: relative;
@@ -111,11 +114,12 @@
       width: 10rem;
       transform: scale(1) translateZ(0) translateX(.55rem);
       transition: transform 0.5s ease-in-out;
-      will-change: transform, opacity;
+      will-change: transform;
+      contain: layout style paint;
     }
     @media (min-width: 768px) {
       .flip-clock-wrapper {
-        transform: scale(1.5) translateX(0);
+        transform: scale(1.5) translateX(0) translateZ(0);
         width: auto; 
       }
       .flip-clock-divider {
@@ -124,7 +128,7 @@
     }
     @media (min-width: 1200px) {
       .flip-clock-wrapper {
-        transform: scale(1.5) translateX(0.65rem);
+        transform: scale(1.5) translateX(0.65rem) translateZ(0);
       }
     }
     @media (max-width: 767px) and (min-height: 700px) {
@@ -135,28 +139,30 @@
     .flip-clock-divider {
       display: none;
     }
-    body.screensaver .flip-clock-wrapper ul:nth-last-child(-n+2) {
+    body.seconds-hidden .flip-clock-wrapper ul:nth-last-child(-n+2) {
       opacity: 0;
       pointer-events: none;
       transition: opacity .5s ease-out;
+      will-change: opacity;
     }
-    body.screensaver .flip-clock-wrapper .flip-clock-divider:nth-of-type(2) .flip-clock-dot {
+    body.seconds-hidden .flip-clock-wrapper .flip-clock-divider:nth-of-type(2) .flip-clock-dot {
       opacity: 0;
       transition: opacity .5s ease-out;
+      will-change: opacity;
     }
-    body:not(.screensaver) .flip-clock-wrapper ul:nth-last-child(-n+2) {
+    body:not(.seconds-hidden) .flip-clock-wrapper ul:nth-last-child(-n+2) {
       opacity: 1;
       pointer-events: auto;
     }
-    body:not(.screensaver) .flip-clock-wrapper .flip-clock-divider:nth-of-type(2) .flip-clock-dot {
+    body:not(.seconds-hidden) .flip-clock-wrapper .flip-clock-divider:nth-of-type(2) .flip-clock-dot {
       opacity: 1;
     }
-    body.screensaver.wide .flip-clock-wrapper {
-      transform: scale(1.5) translateX(5rem);
+    body.seconds-hidden.wide .flip-clock-wrapper {
+      transform: scale(1.5) translateX(5rem) translateZ(0);
       transition: transform 0.5s ease-out;
     }
-    body.screensaver:not(.wide) .flip-clock-wrapper {
-      transform: scale(1.5) translateY(2rem) translateX(0.65rem);
+    body.seconds-hidden:not(.wide) .flip-clock-wrapper {
+      transform: scale(1.6) translateY(2rem) translateX(0.65rem) translateZ(0);
       transition: transform 0.5s ease-out;
     }
     :fullscreen,
@@ -188,10 +194,12 @@
     let inactivityTimer = null;
     let controlsTimer = null;
     let screensaverEnabled = (localStorage.getItem('screensaverEnabled') !== 'false');
+    let secondsVisible = true;
     const screensaverDelay = 5000;
     const controlsHideDelay = 3000;
     let lastUpdateTime = 0;
     let animationFrameId = null;
+    let isClockActive = false;
     const updateInterval = 1000;
 
     async function requestWakeLock() {
@@ -213,6 +221,7 @@
         clockFace: 'TwentyFourHourClock',
         autoStart: true
       });
+      isClockActive = true;
     }
 
     function updateClock() {
@@ -232,16 +241,31 @@
       }
     }
 
+    function hideSeconds() {
+      secondsVisible = false;
+      document.body.classList.add('seconds-hidden');
+    }
+
+    function showSeconds() {
+      secondsVisible = true;
+      document.body.classList.remove('seconds-hidden');
+    }
+
+    function toggleSeconds() {
+      if (secondsVisible) {
+        hideSeconds();
+      } else {
+        showSeconds();
+      }
+    }
+
     function activateScreensaver() {
       if (screensaverEnabled) {
-        document.body.classList.add('screensaver');
+        hideSeconds();
       }
     }
 
     function resetInactivityTimer() {
-      if (document.body.classList.contains('screensaver')) {
-        document.body.classList.remove('screensaver');
-      }
       clearTimeout(inactivityTimer);
       if (screensaverEnabled) {
         inactivityTimer = setTimeout(activateScreensaver, screensaverDelay);
@@ -266,7 +290,6 @@
         localStorage.setItem('screensaverEnabled', screensaverEnabled ? 'true' : 'false');
         if (!screensaverEnabled) {
           clearTimeout(inactivityTimer);
-          document.body.classList.remove('screensaver');
         } else {
           resetInactivityTimer();
         }
@@ -293,16 +316,39 @@
         }
       });
 
-      const events = ['mousemove', 'touchstart', 'click'];
+      const clockElement = document.querySelector('.clock');
+      clockElement.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleSeconds();
+        resetInactivityTimer();
+      });
+
+      const events = ['mousemove', 'touchstart'];
       events.forEach(event => {
-        document.addEventListener(event, () => {
-          resetInactivityTimer();
-          showControls();
+        document.addEventListener(event, (e) => {
+          if (!e.target.closest('.clock')) {
+            showControls();
+          }
+          if (screensaverEnabled) {
+            resetInactivityTimer();
+          }
         }, { passive: true });
       });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.clock')) {
+          showControls();
+          if (screensaverEnabled) {
+            resetInactivityTimer();
+          }
+        }
+      });
+
       document.addEventListener('keydown', () => {
-        resetInactivityTimer();
         showControls();
+        if (screensaverEnabled) {
+          resetInactivityTimer();
+        }
       });
 
       window.addEventListener('resize', checkWidth);
@@ -312,7 +358,9 @@
       initClock();
       setupEventListeners();
       checkWidth();
-      resetInactivityTimer();
+      if (screensaverEnabled) {
+        resetInactivityTimer();
+      }
       hideControls();
 
       if ('wakeLock' in navigator) {
